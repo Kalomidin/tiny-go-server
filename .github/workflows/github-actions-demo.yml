@@ -90,11 +90,14 @@ jobs:
       - name: Echo key.json
         run: cat key.json
 
+      - name: Set GOOGLE_APPLICATION_CREDENTIALS
+        run: |
+          echo "GOOGLE_APPLICATION_CREDENTIALS=key.json" >> $GITHUB_ENV
 
       - name: Authenticate with GCR
         run: |
           gcloud auth configure-docker gcr.io
-          gcloud auth activate-service-account --key-file=key.json
+          gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
           gcloud auth configure-docker --quiet
           
       - name: Build and push Docker image
