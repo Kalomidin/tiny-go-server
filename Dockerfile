@@ -17,5 +17,5 @@ RUN apk --no-cache add ca-certificates
 WORKDIR /app
 COPY --from=build-env /usr/src/app/bin .
 
-EXPOSE 80
+EXPOSE 1423
 CMD ["./yogi_task"]
