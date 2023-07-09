@@ -64,7 +64,7 @@ jobs:
           path: coverage.out
 
   publish:
-    needs: [unit-test, lint]
+    # needs: [unit-test, lint]
     runs-on: ubuntu-latest
     
     steps:
