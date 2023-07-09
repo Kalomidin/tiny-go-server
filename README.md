@@ -16,4 +16,3 @@ Endpoint List:
 - **GET - /echo** : This route sends the Body of the Request back to the User.
 - **POST - /reverse** : This route reverses the message that the user sent in the Body of the Request.
 - **POST - /skip_odd** : This route skips characters at odd indices from the message in the Body of the Request.
-# tiny-go-server

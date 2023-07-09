@@ -28,3 +28,76 @@ jobs:
       - name: Run lint
         run: golangci-lint run
 
+  unit-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.18
+          
+      - name: Install gotestsum
+        run: |
+          go install gotest.tools/gotestsum@latest
+          
+      - name: Make test report output directory
+        run: mkdir -p test-results/go/
+        
+      - name: Execute tests
+        run: gotestsum --junitfile test-results/go/report.xml -- -p 1 -coverprofile=coverage.out ./...
+        timeout-minutes: 15
+        
+      - name: Store test results
+        uses: actions/upload-artifact@v2
+        with:
+          name: Test Results
+          path: test-results
+        
+      - name: Store coverage report
+        uses: actions/upload-artifact@v2
+        with:
+          name: Coverage Report
+          path: coverage.out
+
+  publish:
+    needs: [unit-test, lint]
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 2.7.17
+          
+      - name: Install jq
+        run: |
+          sudo apt-get install jq
+          
+      - name: Set up Docker
+        uses: docker/setup-docker@v2
+        
+      - name: Authenticate with Google Cloud Registry
+        uses: google-github-actions/auth-docker-registry@v0.5.0
+        with:
+          registry: gcr.io
+          project-id: ${{ secrets.GOOGLE_PROJECT_ID }}
+        
+      - name: Configure Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v0.3.0
+        with:
+          project_id: ${{ secrets.GOOGLE_PROJECT_ID }}
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+          
+      - name: Build and push Docker image
+        run: |
+          docker build -t gcr.io/${{ secrets.GOOGLE_PROJECT_ID }}/${{ github.repository }}:${{ github.sha }} .
+          docker push gcr.io/${{ secrets.GOOGLE_PROJECT_ID }}/${{ github.repository }}:${{ github.sha }}
+          gcloud container images add-tag --quiet gcr.io/${{ secrets.GOOGLE_PROJECT_ID }}/${{ github.repository }}:${{ github.sha }} gcr.io/${{ secrets.GOOGLE_PROJECT_ID }}/${{ github.repository }}:latest
+
