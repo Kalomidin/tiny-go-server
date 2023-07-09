@@ -74,7 +74,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
-          python-version: 2.7.17
+          python-version: 3.9
           
       - name: Install jq
         run: |
@@ -83,23 +83,21 @@ jobs:
       - name: Set up Docker
         uses: docker/setup-buildx-action@v1
         
-      - name: Authenticate with Google Cloud Registry
-        uses: google-github-actions/auth-docker-registry@v0.5.0
-        with:
-          registry: gcr.io
-          project-id: ${{ secrets.GOOGLE_PROJECT_ID }}
-        
-      - name: Configure Google Cloud SDK
-        uses: google-github-actions/setup-gcloud@v0.3.0
-        with:
-          project_id: ${{ secrets.GOOGLE_PROJECT_ID }}
-          service_account_key: ${{ secrets.GCP_SA_KEY }}
+      - name: Write GCP SA Key to file
+        run: |
+          echo "${{ secrets.GCP_SA_KEY }}" > key.json
+
+      - name: Authenticate with GCR
+        run: |
+          gcloud auth configure-docker gcr.io
+          gcloud auth activate-service-account --key-file=key.json
+          gcloud auth configure-docker --quiet
           
       - name: Build and push Docker image
         run: |
-          docker build -t gcr.io/${{ secrets.GOOGLE_PROJECT_ID }}/${{ github.repository }}:${{ github.sha }} .
+          docker buildx build --platform linux/amd64,linux/arm64 -t gcr.io/${{ secrets.GOOGLE_PROJECT_ID }}/${{ github.repository }}:${{ github.sha }} .
           docker push gcr.io/${{ secrets.GOOGLE_PROJECT_ID }}/${{ github.repository }}:${{ github.sha }}
-          gcloud container images add-tag --quiet gcr.io/${{ secrets.GOOGLE_PROJECT_ID }}/${{ github.repository }}:${{ github.sha }} gcr.io/${{ secrets.GOOGLE_PROJECT_ID }}/${{ github.repository }}:latest
+          gcloud container images add-tag --quiet gcr.io/${{ secrets.GOOGLE_PROJECT_ID }}/${{ github.repository }}:${{ github.sha }} gcr.io/${{ secrets.GOOGLE_PROJECT_ID }}/${{ github.repository }}:latest        
 
   deploy-to-cloud-run:
     needs: [publish]
