@@ -101,3 +101,28 @@ jobs:
           docker push gcr.io/${{ secrets.GOOGLE_PROJECT_ID }}/${{ github.repository }}:${{ github.sha }}
           gcloud container images add-tag --quiet gcr.io/${{ secrets.GOOGLE_PROJECT_ID }}/${{ github.repository }}:${{ github.sha }} gcr.io/${{ secrets.GOOGLE_PROJECT_ID }}/${{ github.repository }}:latest
 
+  deploy-to-cloud-run:
+    needs: [publish]
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v0.3.0
+        with:
+          project_id: ${{ secrets.GOOGLE_PROJECT_ID }}
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+          
+      - name: Configure Docker login for Google Cloud Registry
+        run: echo ${{ secrets.GCP_SA_KEY }} | base64 --decode | docker login -u _json_key --password-stdin https://gcr.io
+        
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy my-service \
+            --image gcr.io/${{ secrets.GOOGLE_PROJECT_ID }}/${{ github.repository }}:${{ github.sha }} \
+            --platform managed \
+            --region us-central1 \
+            --allow-unauthenticated
+
